@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energia Idroelettrica — Modello Interattivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --water-deep:#0E4A6F;
+    --water:#2E86C1;
+    --water-light:#5DADE2;
+    --water-foam:#AED6F1;
+    --sky-top:#A8D8EA;
+    --sky-bottom:#E8F4F8;
+    --sun:#FFD23F;
+    --bulb:#FFB627;
+    --bulb-glow:#FFE98A;
+    --forest:#2D6A4F;
+    --forest-light:#52B788;
+    --mountain:#5C7A89;
+    --mountain-dark:#3E5360;
+    --dam:#7D8A95;
+    --dam-dark:#4A5560;
+    --rock:#6B5D54;
+    --cream:#FFF8E7;
+    --paper:#FAF3E0;
+    --ink:#1F2937;
+    --ink-soft:#4B5563;
+    --accent:#E63946;
+    --success:#2D6A4F;
+    --warning:#F77F00;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Atkinson Hyperlegible',system-ui,sans-serif;
+    line-height:1.5;
+    overflow-x:hidden;
+  }
+
+  body{
+    background:
+      radial-gradient(ellipse 1200px 600px at 50% -200px, #E8F4F8 0%, transparent 50%),
+      radial-gradient(ellipse 800px 400px at 100% 100%, #F0E5D8 0%, transparent 50%),
+      var(--cream);
+    min-height:100vh;
+    padding:20px 16px 60px;
+  }
+
+  /* ─────────── LAYOUT ─────────── */
+  .wrap{max-width:1280px;margin:0 auto}
+
+  header.top{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:end;
+    justify-content:space-between;
+    gap:20px;
+    padding:8px 0 24px;
+    border-bottom:2px solid var(--ink);
+    margin-bottom:24px;
+  }
+
+  .brand h1{
+    font-family:'Fraunces',serif;
+    font-weight:900;
+    font-size:clamp(2rem,5vw,3.4rem);
+    line-height:0.95;
+    letter-spacing:-0.02em;
+    color:var(--ink);
+  }
+  .brand h1 em{
+    font-style:italic;
+    color:var(--water-deep);
+    font-weight:500;
+  }
+  .brand p{
+    font-size:0.95rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+    max-width:50ch;
+  }
+
+  /* level switcher */
+  .level-switch{
+    display:flex;
+    background:var(--ink);
+    border-radius:999px;
+    padding:5px;
+    gap:4px;
+    box-shadow:0 4px 0 0 var(--ink-soft), 0 8px 20px rgba(0,0,0,0.15);
+  }
+  .level-switch button{
+    border:none;
+    background:transparent;
+    color:#fff;
+    padding:12px 22px;
+    font-family:'Atkinson Hyperlegible',sans-serif;
+    font-weight:700;
+    font-size:0.9rem;
+    border-radius:999px;
+    cursor:pointer;
+    transition:all 0.25s ease;
+    letter-spacing:0.04em;
+  }
+  .level-switch button.active{
+    background:var(--sun);
+    color:var(--ink);
+  }
+  .level-switch button:not(.active):hover{
+    background:rgba(255,255,255,0.1);
+  }
+
+  /* main grid */
+  .stage{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+  @media(min-width:980px){
+    .stage{grid-template-columns:1.6fr 1fr;align-items:start}
+  }
+
+  /* ─────────── DIAGRAM CARD ─────────── */
+  .diagram-card{
+    background:linear-gradient(180deg,#D1ECF7 0%, #E8F4F8 60%, #F5E9D3 100%);
+    border:2px solid var(--ink);
+    border-radius:24px;
+    overflow:hidden;
+    position:relative;
+    box-shadow:8px 8px 0 0 var(--ink);
+  }
+
+  .diagram-svg{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+
+  /* Animations */
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-40}}
+  @keyframes drift{0%{transform:translateX(0)}50%{transform:translateX(20px)}100%{transform:translateX(0)}}
+  @keyframes pulse{0%,100%{opacity:0.85}50%{opacity:1}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+  .turbine-rotor{transform-origin:center center;transform-box:fill-box}
+  .cloud{animation:drift 18s ease-in-out infinite}
+  .cloud--2{animation-duration:25s;animation-delay:-8s}
+  .water-flow{
+    stroke:var(--water-light);
+    stroke-width:6;
+    fill:none;
+    stroke-linecap:round;
+    stroke-dasharray:8 12;
+    animation:flow 0.8s linear infinite;
+  }
+  .water-flow.slow{animation-duration:2s}
+  .water-flow.medium{animation-duration:1s}
+  .water-flow.fast{animation-duration:0.4s}
+  .water-flow.off{animation:none;opacity:0.15}
+
+  .house-window{transition:fill 0.5s ease, filter 0.5s ease}
+  .house-window.lit{
+    fill:var(--bulb-glow);
+    filter:drop-shadow(0 0 6px var(--bulb));
+  }
+
+  .bulb-rays{
+    transform-origin:center;
+    transform-box:fill-box;
+    transition:opacity 0.4s ease;
+    animation:pulse 2s ease-in-out infinite;
+  }
+
+  /* Hotspots (hard mode) */
+  .hotspot{
+    cursor:pointer;
+    transition:transform 0.2s ease;
+  }
+  .hotspot:hover circle.hot-ring{
+    stroke-width:4;
+    stroke:var(--accent);
+  }
+  .hotspot circle.hot-dot{
+    fill:var(--accent);
+    animation:pulse 2s ease-in-out infinite;
+  }
+  .hotspot circle.hot-ring{
+    fill:none;
+    stroke:var(--accent);
+    stroke-width:2;
+    opacity:0.6;
+  }
+  .hotspot text{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:11px;
+    fill:var(--ink);
+    paint-order:stroke;
+    stroke:#fff;
+    stroke-width:3px;
+  }
+
+  /* ─────────── CONTROL PANEL ─────────── */
+  .panel{
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:24px;
+    padding:24px;
+    box-shadow:8px 8px 0 0 var(--ink);
+  }
+  .panel + .panel{margin-top:20px}
+
+  .panel h2{
+    font-family:'Fraunces',serif;
+    font-size:1.5rem;
+    font-weight:700;
+    margin-bottom:16px;
+    line-height:1.1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel h2 .badge{
+    background:var(--ink);
+    color:var(--sun);
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.7rem;
+    padding:3px 8px;
+    border-radius:6px;
+    letter-spacing:0.1em;
+  }
+
+  /* ─────────── EASY MODE ─────────── */
+  .easy-only{display:none}
+  body.mode-easy .easy-only{display:block}
+  body.mode-easy .hard-only{display:none}
+
+  .easy-only h2,
+  .easy-only .step,
+  .easy-only .easy-control label,
+  .easy-only .quiz-q,
+  .easy-only .quiz-opt span,
+  .easy-only .easy-readout-label,
+  .easy-only .easy-readout-value,
+  .easy-only .gate-btn{
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+  }
+
+  .easy-control{
+    margin-bottom:20px;
+  }
+  .easy-control label{
+    display:block;
+    font-weight:700;
+    font-size:1.1rem;
+    margin-bottom:10px;
+  }
+
+  .big-slider{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:18px;
+    border-radius:999px;
+    background:linear-gradient(90deg, var(--water-foam), var(--water));
+    border:2px solid var(--ink);
+    outline:none;
+  }
+  .big-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--sun);
+    border:3px solid var(--ink);
+    cursor:grab;
+    box-shadow:0 4px 0 0 var(--ink);
+  }
+  .big-slider::-moz-range-thumb{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--sun);
+    border:3px solid var(--ink);
+    cursor:grab;
+  }
+
+  .slider-ends{
+    display:flex;
+    justify-content:space-between;
+    margin-top:8px;
+    font-weight:700;
+    font-size:0.95rem;
+  }
+
+  .gate-btn{
+    width:100%;
+    padding:18px;
+    font-size:1.2rem;
+    font-weight:700;
+    font-family:'Atkinson Hyperlegible',sans-serif;
+    border:3px solid var(--ink);
+    border-radius:18px;
+    cursor:pointer;
+    background:var(--sun);
+    color:var(--ink);
+    box-shadow:0 6px 0 0 var(--ink);
+    transition:all 0.1s ease;
+    margin-top:10px;
+  }
+  .gate-btn:active{
+    transform:translateY(4px);
+    box-shadow:0 2px 0 0 var(--ink);
+  }
+  .gate-btn.closed{
+    background:#E63946;
+    color:#fff;
+  }
+
+  .easy-readout{
+    background:var(--ink);
+    color:var(--cream);
+    border-radius:18px;
+    padding:18px;
+    margin-top:18px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .easy-readout-cell{
+    text-align:center;
+  }
+  .easy-readout-label{
+    font-size:0.8rem;
+    color:var(--bulb-glow);
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .easy-readout-value{
+    font-family:'Fraunces',serif;
+    font-size:2rem;
+    font-weight:900;
+    color:var(--sun);
+    line-height:1;
+  }
+
+  .steps-list{
+    list-style:none;
+    counter-reset:step;
+  }
+  .steps-list .step{
+    counter-increment:step;
+    background:#fff;
+    border:2px solid var(--ink);
+    border-radius:14px;
+    padding:14px 14px 14px 56px;
+    margin-bottom:10px;
+    position:relative;
+    font-weight:700;
+    font-size:1.05rem;
+  }
+  .steps-list .step::before{
+    content:counter(step);
+    position:absolute;
+    left:10px;
+    top:50%;
+    transform:translateY(-50%);
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--sun);
+    border:2px solid var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Fraunces',serif;
+    font-size:1.2rem;
+  }
+
+  /* ─────────── HARD MODE ─────────── */
+  .hard-only{display:none}
+  body.mode-hard .hard-only{display:block}
+
+  .hard-control{
+    margin-bottom:14px;
+    padding:12px;
+    background:#fff;
+    border:1.5px solid var(--ink);
+    border-radius:12px;
+  }
+  .hard-control-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:8px;
+    gap:10px;
+  }
+  .hard-control-head .name{
+    font-weight:700;
+    font-size:0.95rem;
+  }
+  .hard-control-head .name small{
+    color:var(--ink-soft);
+    font-weight:400;
+    font-size:0.85em;
+  }
+  .hard-control-head .value{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    background:var(--ink);
+    color:var(--sun);
+    padding:3px 8px;
+    border-radius:6px;
+    font-size:0.85rem;
+    white-space:nowrap;
+  }
+  .tech-slider{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:#D1D5DB;
+    outline:none;
+  }
+  .tech-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:var(--ink);
+    border:2px solid var(--sun);
+    cursor:grab;
+  }
+  .tech-slider::-moz-range-thumb{
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:var(--ink);
+    border:2px solid var(--sun);
+    cursor:grab;
+  }
+
+  .formula{
+    background:var(--ink);
+    color:var(--cream);
+    border-radius:14px;
+    padding:18px;
+    margin-top:14px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .formula-line{
+    font-size:1.4rem;
+    font-weight:700;
+    text-align:center;
+    margin-bottom:10px;
+    color:var(--sun);
+    letter-spacing:0.02em;
+  }
+  .formula-calc{
+    text-align:center;
+    font-size:0.95rem;
+    line-height:1.6;
+    color:var(--bulb-glow);
+  }
+  .formula-result{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1.5px dashed var(--bulb);
+    text-align:center;
+    font-family:'Fraunces',serif;
+    font-size:2.4rem;
+    font-weight:900;
+    color:#fff;
+    line-height:1;
+  }
+  .formula-result small{
+    display:block;
+    font-family:'Atkinson Hyperlegible',sans-serif;
+    font-size:0.85rem;
+    color:var(--bulb-glow);
+    margin-top:4px;
+    font-weight:400;
+    letter-spacing:0.05em;
+  }
+
+  .impact-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+  }
+  .impact{
+    background:#fff;
+    border:1.5px solid var(--ink);
+    border-radius:12px;
+    padding:12px;
+    text-align:center;
+  }
+  .impact-icon{font-size:1.6rem;display:block;margin-bottom:4px}
+  .impact-num{
+    font-family:'Fraunces',serif;
+    font-size:1.6rem;
+    font-weight:900;
+    color:var(--ink);
+    line-height:1;
+  }
+  .impact-lbl{
+    font-size:0.75rem;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+
+  /* component info popover */
+  .component-info{
+    background:#FFF7E0;
+    border:2px solid var(--ink);
+    border-radius:14px;
+    padding:14px;
+    margin-top:12px;
+    min-height:60px;
+    transition:all 0.3s ease;
+  }
+  .component-info.empty{
+    background:#F3F4F6;
+    color:var(--ink-soft);
+    font-style:italic;
+    text-align:center;
+    font-size:0.9rem;
+    padding:18px;
+  }
+  .component-info h3{
+    font-family:'Fraunces',serif;
+    font-size:1.15rem;
+    font-weight:700;
+    margin-bottom:6px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .component-info h3 .num{
+    width:24px;height:24px;
+    background:var(--accent);color:#fff;
+    border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.75rem;
+  }
+  .component-info p{font-size:0.92rem;line-height:1.5}
+
+  /* ─────────── QUIZ ─────────── */
+  .quiz-card{margin-top:20px}
+  .quiz-q{
+    font-weight:700;
+    font-size:1.1rem;
+    margin-bottom:12px;
+    line-height:1.3;
+  }
+  body.mode-easy .quiz-q{font-size:1.2rem}
+
+  .quiz-opts{
+    display:grid;
+    gap:8px;
+  }
+  .quiz-opt{
+    background:#fff;
+    border:2px solid var(--ink);
+    border-radius:12px;
+    padding:14px 16px;
+    cursor:pointer;
+    text-align:left;
+    font-family:inherit;
+    font-size:1rem;
+    font-weight:600;
+    transition:all 0.15s ease;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .quiz-opt:hover:not(:disabled){
+    background:var(--sky-bottom);
+    transform:translateX(4px);
+  }
+  .quiz-opt:disabled{cursor:not-allowed}
+  .quiz-opt.correct{
+    background:#D4EDDA;
+    border-color:var(--success);
+  }
+  .quiz-opt.wrong{
+    background:#F8D7DA;
+    border-color:var(--accent);
+  }
+  .quiz-opt .marker{
+    width:28px;height:28px;
+    flex:0 0 28px;
+    border-radius:50%;
+    border:2px solid var(--ink);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-weight:700;
+    background:var(--paper);
+    font-family:'Fraunces',serif;
+  }
+  .quiz-opt.correct .marker{background:var(--success);color:#fff;border-color:var(--success)}
+  .quiz-opt.wrong .marker{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .quiz-feedback{
+    margin-top:12px;
+    padding:12px;
+    border-radius:10px;
+    font-weight:600;
+    display:none;
+  }
+  .quiz-feedback.show{display:block}
+  .quiz-feedback.ok{background:#D4EDDA;color:#155724;border:1.5px solid var(--success)}
+  .quiz-feedback.ko{background:#F8D7DA;color:#721C24;border:1.5px solid var(--accent)}
+
+  .quiz-nav{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:14px;
+    gap:10px;
+  }
+  .quiz-progress{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    color:var(--ink-soft);
+    font-size:0.9rem;
+  }
+  .quiz-next{
+    background:var(--ink);
+    color:var(--sun);
+    border:none;
+    padding:10px 20px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:0.95rem;
+  }
+  .quiz-next:disabled{opacity:0.4;cursor:not-allowed}
+
+  .quiz-final{
+    text-align:center;
+    padding:20px 10px;
+  }
+  .quiz-final-score{
+    font-family:'Fraunces',serif;
+    font-size:3rem;
+    font-weight:900;
+    color:var(--water-deep);
+    line-height:1;
+  }
+  .quiz-final small{
+    display:block;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .quiz-restart{
+    margin-top:16px;
+    background:var(--sun);
+    border:2px solid var(--ink);
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+    box-shadow:0 4px 0 0 var(--ink);
+  }
+  .quiz-restart:active{transform:translateY(2px);box-shadow:0 2px 0 0 var(--ink)}
+
+  /* footer */
+  footer.note{
+    text-align:center;
+    margin-top:36px;
+    color:var(--ink-soft);
+    font-size:0.82rem;
+  }
+  footer.note strong{color:var(--ink)}
+
+  /* signature */
+  .signature{
+    margin-top:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+  }
+  .signature::before, .signature::after{
+    content:"";
+    flex:0 0 80px;
+    height:1px;
+    background:linear-gradient(90deg, transparent, var(--ink-soft), transparent);
+  }
+  .signature span{
+    font-family:'Fraunces',serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:1.6rem;
+    color:var(--water-deep);
+    transform:rotate(-2.5deg);
+    display:inline-block;
+    letter-spacing:0.01em;
+  }
+  .signature span::before{
+    content:"~ ";
+    color:var(--accent);
+    font-style:normal;
+  }
+
+  /* smooth height indicator */
+  #height-line, #height-tick-top, #height-text{
+    transition: y 0.3s ease, y1 0.3s ease, y2 0.3s ease;
+  }
+</style>
+</head>
+<body class="mode-easy">
+
+<div class="wrap">
+
+  <!-- ─────────── HEADER ─────────── -->
+  <header class="top">
+    <div class="brand">
+      <h1>Energia <em>idroelettrica</em></h1>
+      <p>Un modello interattivo per capire come l'acqua diventa elettricità. Scegli il livello in alto a destra.</p>
+    </div>
+    <div class="level-switch" role="tablist" aria-label="Livello di difficoltà">
+      <button id="btn-easy" class="active" role="tab" aria-selected="true">FACILE</button>
+      <button id="btn-hard" role="tab" aria-selected="false">DIFFICILE</button>
+    </div>
+  </header>
+
+  <!-- ─────────── STAGE ─────────── -->
+  <div class="stage">
+
+    <!-- ───── DIAGRAM ───── -->
+    <div class="diagram-card">
+      <svg class="diagram-svg" viewBox="0 0 700 480" xmlns="http://www.w3.org/2000/svg" aria-label="Schema centrale idroelettrica">
+
+        <!-- SKY -->
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#A8D8EA"/>
+            <stop offset="100%" stop-color="#E8F4F8"/>
+          </linearGradient>
+          <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#5DADE2"/>
+            <stop offset="100%" stop-color="#0E4A6F"/>
+          </linearGradient>
+          <linearGradient id="mountainGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7C8F9C"/>
+            <stop offset="100%" stop-color="#3E5360"/>
+          </linearGradient>
+          <radialGradient id="bulbGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="#FFE98A" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#FFE98A" stop-opacity="0"/>
+          </radialGradient>
+          <pattern id="rockPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect width="20" height="20" fill="#7D8A95"/>
+            <circle cx="5" cy="5" r="1" fill="#5C6770" opacity="0.5"/>
+            <circle cx="15" cy="12" r="1.2" fill="#9BA8B3" opacity="0.5"/>
+            <circle cx="8" cy="16" r="0.8" fill="#5C6770" opacity="0.4"/>
+          </pattern>
+        </defs>
+
+        <rect width="700" height="480" fill="url(#skyGrad)"/>
+
+        <!-- SUN -->
+        <circle cx="600" cy="70" r="32" fill="#FFD23F"/>
+        <g stroke="#FFD23F" stroke-width="3" stroke-linecap="round">
+          <line x1="600" y1="20" x2="600" y2="10"/>
+          <line x1="600" y1="130" x2="600" y2="120"/>
+          <line x1="540" y1="70" x2="550" y2="70"/>
+          <line x1="660" y1="70" x2="650" y2="70"/>
+          <line x1="555" y1="25" x2="562" y2="32"/>
+          <line x1="638" y1="108" x2="645" y2="115"/>
+          <line x1="645" y1="25" x2="638" y2="32"/>
+          <line x1="562" y1="108" x2="555" y2="115"/>
+        </g>
+
+        <!-- CLOUDS -->
+        <g class="cloud" opacity="0.92">
+          <ellipse cx="120" cy="60" rx="40" ry="18" fill="#fff"/>
+          <ellipse cx="145" cy="50" rx="28" ry="20" fill="#fff"/>
+          <ellipse cx="100" cy="55" rx="22" ry="16" fill="#fff"/>
+        </g>
+        <g class="cloud cloud--2" opacity="0.85">
+          <ellipse cx="380" cy="40" rx="32" ry="14" fill="#fff"/>
+          <ellipse cx="400" cy="32" rx="22" ry="16" fill="#fff"/>
+        </g>
+
+        <!-- MOUNTAINS BACKGROUND -->
+        <polygon points="0,260 90,140 160,200 240,110 330,210 380,180 420,260" fill="url(#mountainGrad)"/>
+        <polygon points="80,260 130,180 180,220 220,170 270,260" fill="#3E5360" opacity="0.6"/>
+        <!-- snow caps -->
+        <polygon points="225,125 240,110 265,150 250,150" fill="#fff" opacity="0.8"/>
+        <polygon points="80,160 90,140 110,170 100,170" fill="#fff" opacity="0.7"/>
+
+        <!-- RESERVOIR / LAKE -->
+        <!-- back wall of basin -->
+        <path d="M 0,260 L 420,260 L 420,310 L 0,310 Z" fill="#0E4A6F"/>
+        <!-- water surface -->
+        <ellipse id="water-surface-ellipse" cx="210" cy="263" rx="210" ry="6" fill="#5DADE2" opacity="0.6"/>
+        <!-- water body (visible) -->
+        <path id="water-body" d="M 0,265 L 420,265 L 420,310 L 0,310 Z" fill="url(#waterGrad)"/>
+        <!-- ripples -->
+        <g id="water-ripples" opacity="0.4">
+          <path d="M 40,272 Q 60,268 80,272" stroke="#fff" stroke-width="1.2" fill="none"/>
+          <path d="M 150,278 Q 175,274 200,278" stroke="#fff" stroke-width="1.2" fill="none"/>
+          <path d="M 260,272 Q 285,268 310,272" stroke="#fff" stroke-width="1.2" fill="none"/>
+        </g>
+
+        <!-- DAM / DIGA -->
+        <g id="dam">
+          <!-- dam wall -->
+          <path d="M 410,260 L 460,260 L 460,420 L 415,420 Z" fill="url(#rockPattern)" stroke="#3E5360" stroke-width="2"/>
+          <!-- top crest -->
+          <rect x="408" y="255" width="56" height="12" fill="#7D8A95" stroke="#3E5360" stroke-width="1.5"/>
+          <!-- ridges -->
+          <line x1="425" y1="270" x2="425" y2="415" stroke="#5C6770" stroke-width="1" opacity="0.5"/>
+          <line x1="445" y1="270" x2="445" y2="415" stroke="#5C6770" stroke-width="1" opacity="0.5"/>
+          <!-- gate opening -->
+          <rect id="gate-opening" x="412" y="328" width="14" height="22" fill="#0E4A6F" rx="2"/>
+          <!-- gate door (when closed slides over opening) -->
+          <rect id="gate-door" x="412" y="328" width="14" height="22" fill="#E63946" rx="2" stroke="#3E5360" stroke-width="1.5"/>
+        </g>
+
+        <!-- GROUND right side -->
+        <path d="M 460,420 L 700,420 L 700,480 L 0,480 L 0,310 L 410,310 L 460,420 Z" fill="#8FB996"/>
+        <path d="M 460,420 L 700,420 L 700,480 L 460,480 Z" fill="#52B788"/>
+        <!-- grass tufts -->
+        <g fill="#2D6A4F" opacity="0.6">
+          <path d="M 480,420 l 2,-6 l 2,6 z M 484,420 l 2,-7 l 2,7 z"/>
+          <path d="M 540,420 l 2,-6 l 2,6 z"/>
+          <path d="M 620,420 l 2,-7 l 2,7 z M 624,420 l 2,-5 l 2,5 z"/>
+        </g>
+
+        <!-- PENSTOCK / CONDOTTA FORZATA -->
+        <g id="penstock">
+          <!-- pipe outer -->
+          <path d="M 420,340 L 530,420" stroke="#4A4A4A" stroke-width="20" stroke-linecap="round" fill="none"/>
+          <path d="M 420,340 L 530,420" stroke="#7D8A95" stroke-width="14" stroke-linecap="round" fill="none"/>
+          <!-- joint rings -->
+          <circle cx="450" cy="362" r="10" fill="none" stroke="#4A4A4A" stroke-width="3"/>
+          <circle cx="480" cy="385" r="10" fill="none" stroke="#4A4A4A" stroke-width="3"/>
+          <circle cx="510" cy="408" r="10" fill="none" stroke="#4A4A4A" stroke-width="3"/>
+        </g>
+
+        <!-- WATER FLOWING through penstock (animated) -->
+        <path id="flow-penstock" class="water-flow medium" d="M 420,340 L 530,420"/>
+
+        <!-- POWERHOUSE (CASA DELLA CENTRALE) -->
+        <g id="powerhouse">
+          <!-- building -->
+          <rect x="510" y="395" width="120" height="55" fill="#FAF3E0" stroke="#1F2937" stroke-width="2"/>
+          <!-- roof -->
+          <polygon points="505,395 635,395 622,378 518,378" fill="#9C2A1A" stroke="#1F2937" stroke-width="2"/>
+          <!-- door -->
+          <rect x="555" y="425" width="20" height="25" fill="#5C4033" stroke="#1F2937" stroke-width="1.5"/>
+          <circle cx="572" cy="438" r="1.2" fill="#FFD23F"/>
+          <!-- small window -->
+          <rect x="595" y="408" width="15" height="12" fill="#5DADE2" stroke="#1F2937" stroke-width="1"/>
+          <line x1="602.5" y1="408" x2="602.5" y2="420" stroke="#1F2937" stroke-width="0.8"/>
+          <line x1="595" y1="414" x2="610" y2="414" stroke="#1F2937" stroke-width="0.8"/>
+        </g>
+
+        <!-- TURBINE (visible inside cutaway) -->
+        <g id="turbine-group" transform="translate(540, 422)">
+          <!-- housing -->
+          <circle cx="0" cy="0" r="22" fill="#E8E8E8" stroke="#1F2937" stroke-width="2"/>
+          <circle cx="0" cy="0" r="18" fill="#FAF3E0" stroke="#1F2937" stroke-width="1"/>
+          <!-- rotor (spins) -->
+          <g class="turbine-rotor" id="turbine-rotor">
+            <circle cx="0" cy="0" r="6" fill="#1F2937"/>
+            <!-- 6 blades -->
+            <g fill="#4A5560" stroke="#1F2937" stroke-width="1">
+              <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              <path d="M 4.3,-2.5 Q 10.4,-6 14,-8 Q 12,-4 4.3,-2.5 Z" transform="rotate(60)"/>
+              <path d="M 4.3,2.5 Q 10.4,6 14,8 Q 12,4 4.3,2.5 Z" transform="rotate(60)"/>
+              <g transform="rotate(60)">
+                <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              </g>
+              <g transform="rotate(120)">
+                <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              </g>
+              <g transform="rotate(180)">
+                <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              </g>
+              <g transform="rotate(240)">
+                <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              </g>
+              <g transform="rotate(300)">
+                <path d="M 0,-5 Q 3,-12 0,-16 Q -3,-12 0,-5 Z"/>
+              </g>
+            </g>
+          </g>
+        </g>
+
+        <!-- ALTERNATOR -->
+        <g id="alternator" transform="translate(580, 422)">
+          <rect x="-13" y="-15" width="26" height="30" rx="3" fill="#FFD23F" stroke="#1F2937" stroke-width="2"/>
+          <line x1="-10" y1="-10" x2="10" y2="-10" stroke="#1F2937" stroke-width="1"/>
+          <line x1="-10" y1="-5" x2="10" y2="-5" stroke="#1F2937" stroke-width="1"/>
+          <line x1="-10" y1="0" x2="10" y2="0" stroke="#1F2937" stroke-width="1"/>
+          <line x1="-10" y1="5" x2="10" y2="5" stroke="#1F2937" stroke-width="1"/>
+          <line x1="-10" y1="10" x2="10" y2="10" stroke="#1F2937" stroke-width="1"/>
+          <!-- shaft connecting to turbine -->
+          <line x1="-13" y1="0" x2="-19" y2="0" stroke="#1F2937" stroke-width="3"/>
+        </g>
+
+        <!-- WATER OUT (tailrace) -->
+        <path d="M 555,448 Q 580,455 610,452 Q 640,449 660,455 L 660,470 L 555,470 Z" fill="#5DADE2" opacity="0.85"/>
+        <path id="flow-out" class="water-flow medium" d="M 555,460 Q 600,464 660,460" stroke-width="3"/>
+
+        <!-- POWER LINES -->
+        <g id="powerlines" stroke="#1F2937" stroke-width="2" fill="none">
+          <!-- pylons -->
+          <g>
+            <line x1="600" y1="395" x2="600" y2="340"/>
+            <line x1="595" y1="350" x2="605" y2="350"/>
+            <line x1="592" y1="360" x2="608" y2="360"/>
+          </g>
+          <g>
+            <line x1="660" y1="385" x2="660" y2="330"/>
+            <line x1="655" y1="340" x2="665" y2="340"/>
+            <line x1="652" y1="350" x2="668" y2="350"/>
+          </g>
+          <!-- wires (drooping) -->
+          <path d="M 600,345 Q 630,358 660,335" stroke-width="1.5"/>
+          <path d="M 600,355 Q 630,368 660,345" stroke-width="1.5"/>
+        </g>
+
+        <!-- HOUSES (city) -->
+        <g id="city" transform="translate(0,0)">
+          <!-- House 1 -->
+          <g transform="translate(60,360)">
+            <rect x="0" y="20" width="50" height="40" fill="#FAF3E0" stroke="#1F2937" stroke-width="1.8"/>
+            <polygon points="-3,20 53,20 25,0" fill="#9C2A1A" stroke="#1F2937" stroke-width="1.8"/>
+            <rect class="house-window" x="6" y="28" width="10" height="10" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="34" y="28" width="10" height="10" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect x="20" y="42" width="10" height="18" fill="#5C4033" stroke="#1F2937" stroke-width="1"/>
+          </g>
+          <!-- House 2 -->
+          <g transform="translate(140,355)">
+            <rect x="0" y="20" width="60" height="45" fill="#E8DCC0" stroke="#1F2937" stroke-width="1.8"/>
+            <polygon points="-3,20 63,20 30,-2" fill="#5C4033" stroke="#1F2937" stroke-width="1.8"/>
+            <rect class="house-window" x="6" y="28" width="12" height="12" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="42" y="28" width="12" height="12" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="6" y="46" width="12" height="12" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="42" y="46" width="12" height="12" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect x="24" y="48" width="12" height="17" fill="#5C4033" stroke="#1F2937" stroke-width="1"/>
+          </g>
+          <!-- House 3 -->
+          <g transform="translate(225,365)">
+            <rect x="0" y="15" width="45" height="40" fill="#FAF3E0" stroke="#1F2937" stroke-width="1.8"/>
+            <polygon points="-3,15 48,15 22,-3" fill="#9C2A1A" stroke="#1F2937" stroke-width="1.8"/>
+            <rect class="house-window" x="6" y="22" width="10" height="10" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="29" y="22" width="10" height="10" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect x="18" y="38" width="10" height="17" fill="#5C4033" stroke="#1F2937" stroke-width="1"/>
+          </g>
+          <!-- House 4 -->
+          <g transform="translate(295,358)">
+            <rect x="0" y="20" width="55" height="42" fill="#E8DCC0" stroke="#1F2937" stroke-width="1.8"/>
+            <polygon points="-3,20 58,20 27,0" fill="#5C4033" stroke="#1F2937" stroke-width="1.8"/>
+            <rect class="house-window" x="6" y="28" width="11" height="11" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="38" y="28" width="11" height="11" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="6" y="44" width="11" height="11" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect class="house-window" x="38" y="44" width="11" height="11" fill="#A8B5BD" stroke="#1F2937" stroke-width="1"/>
+            <rect x="22" y="46" width="11" height="16" fill="#5C4033" stroke="#1F2937" stroke-width="1"/>
+          </g>
+        </g>
+
+        <!-- BIG BULB indicator (always visible) -->
+        <g id="bulb" transform="translate(640, 220)">
+          <ellipse class="bulb-rays" cx="0" cy="0" rx="40" ry="40" fill="url(#bulbGlow)" opacity="0"/>
+          <path d="M 0,-22 Q -16,-22 -16,-6 Q -16,5 -10,12 L -10,18 L 10,18 L 10,12 Q 16,5 16,-6 Q 16,-22 0,-22 Z"
+                id="bulb-glass" fill="#A8B5BD" stroke="#1F2937" stroke-width="2"/>
+          <rect x="-8" y="18" width="16" height="6" fill="#7D8A95" stroke="#1F2937" stroke-width="1.5"/>
+          <line x1="-8" y1="22" x2="8" y2="22" stroke="#1F2937" stroke-width="1"/>
+          <!-- filament -->
+          <path d="M -6,-2 Q -4,4 0,2 Q 4,0 6,-4" stroke="#FF8C42" stroke-width="1.5" fill="none" id="filament"/>
+        </g>
+
+        <!-- WATER FLOW lines visible coming OUT of dam gate when open -->
+        <path id="flow-gate" class="water-flow medium" d="M 419,339 L 425,344" stroke-width="4"/>
+
+        <!-- HOTSPOTS (HARD MODE) - hidden by default via JS -->
+        <g id="hotspots" style="display:none">
+          <g class="hotspot" data-cmp="bacino">
+            <circle class="hot-ring" cx="180" cy="285" r="14"/>
+            <circle class="hot-dot" cx="180" cy="285" r="6"/>
+            <text x="200" y="289">1</text>
+          </g>
+          <g class="hotspot" data-cmp="diga">
+            <circle class="hot-ring" cx="436" cy="290" r="14"/>
+            <circle class="hot-dot" cx="436" cy="290" r="6"/>
+            <text x="455" y="294">2</text>
+          </g>
+          <g class="hotspot" data-cmp="condotta">
+            <circle class="hot-ring" cx="475" cy="380" r="14"/>
+            <circle class="hot-dot" cx="475" cy="380" r="6"/>
+            <text x="455" y="372">3</text>
+          </g>
+          <g class="hotspot" data-cmp="turbina">
+            <circle class="hot-ring" cx="540" cy="422" r="14"/>
+            <circle class="hot-dot" cx="540" cy="422" r="6"/>
+            <text x="525" y="395">4</text>
+          </g>
+          <g class="hotspot" data-cmp="alternatore">
+            <circle class="hot-ring" cx="580" cy="422" r="14"/>
+            <circle class="hot-dot" cx="580" cy="422" r="6"/>
+            <text x="595" y="395">5</text>
+          </g>
+          <g class="hotspot" data-cmp="rete">
+            <circle class="hot-ring" cx="630" cy="345" r="14"/>
+            <circle class="hot-dot" cx="630" cy="345" r="6"/>
+            <text x="650" y="349">6</text>
+          </g>
+        </g>
+
+        <!-- HEIGHT indicator (hard mode) -->
+        <g id="height-indicator" style="display:none">
+          <line id="height-line" x1="395" y1="265" x2="395" y2="420" stroke="#E63946" stroke-width="2" stroke-dasharray="4 4"/>
+          <line id="height-tick-top" x1="390" y1="265" x2="400" y2="265" stroke="#E63946" stroke-width="2"/>
+          <line x1="390" y1="420" x2="400" y2="420" stroke="#E63946" stroke-width="2"/>
+          <text id="height-text" x="375" y="345" text-anchor="end" font-family="JetBrains Mono, monospace" font-weight="700" font-size="11" fill="#E63946">h = <tspan id="height-label">80</tspan>m</text>
+        </g>
+
+      </svg>
+    </div>
+
+    <!-- ───── CONTROLS ───── -->
+    <div>
+
+      <!-- ═══ EASY MODE PANEL ═══ -->
+      <section class="panel easy-only" aria-labelledby="easy-title">
+        <h2 id="easy-title"><span class="badge">FACILE</span> Apri La Diga</h2>
+
+        <div class="easy-control">
+          <label for="easy-water">QUANTA ACQUA?</label>
+          <input id="easy-water" class="big-slider" type="range" min="0" max="100" value="50" step="1" aria-label="Quanta acqua">
+          <div class="slider-ends">
+            <span>POCA 💧</span>
+            <span>TANTA 🌊</span>
+          </div>
+        </div>
+
+        <button id="gate-toggle" class="gate-btn">APRI LA DIGA</button>
+
+        <div class="easy-readout">
+          <div class="easy-readout-cell">
+            <div class="easy-readout-label">RUOTA</div>
+            <div class="easy-readout-value" id="ez-speed">0</div>
+            <small style="color:var(--bulb-glow);font-size:0.7rem">GIRI</small>
+          </div>
+          <div class="easy-readout-cell">
+            <div class="easy-readout-label">CASE</div>
+            <div class="easy-readout-value" id="ez-houses">0</div>
+            <small style="color:var(--bulb-glow);font-size:0.7rem">DI 4</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel easy-only">
+        <h2><span class="badge">COME FUNZIONA</span></h2>
+        <ol class="steps-list">
+          <li class="step">L'ACQUA È IN ALTO NEL LAGO 🏔️💧</li>
+          <li class="step">APRI LA DIGA E L'ACQUA SCENDE 🚪💨</li>
+          <li class="step">L'ACQUA FA GIRARE LA RUOTA 🌀</li>
+          <li class="step">LA RUOTA FA L'ELETTRICITÀ ⚡</li>
+          <li class="step">LE CASE SI ACCENDONO 💡🏠</li>
+        </ol>
+      </section>
+
+      <!-- ═══ HARD MODE PANEL ═══ -->
+      <section class="panel hard-only" aria-labelledby="hard-title">
+        <h2 id="hard-title"><span class="badge">PARAMETRI</span> Centrale</h2>
+
+        <div class="hard-control">
+          <div class="hard-control-head">
+            <span class="name">Salto idraulico <small>h (m)</small></span>
+            <span class="value" id="v-h">80 m</span>
+          </div>
+          <input id="hd-h" class="tech-slider" type="range" min="10" max="200" value="80" step="5">
+        </div>
+
+        <div class="hard-control">
+          <div class="hard-control-head">
+            <span class="name">Portata <small>Q (m³/s)</small></span>
+            <span class="value" id="v-q">15 m³/s</span>
+          </div>
+          <input id="hd-q" class="tech-slider" type="range" min="1" max="60" value="15" step="1">
+        </div>
+
+        <div class="hard-control">
+          <div class="hard-control-head">
+            <span class="name">Rendimento <small>η (turbina+alternatore)</small></span>
+            <span class="value" id="v-eta">0.85</span>
+          </div>
+          <input id="hd-eta" class="tech-slider" type="range" min="0.60" max="0.95" value="0.85" step="0.01">
+        </div>
+
+        <div class="formula">
+          <div class="formula-line">P = ρ · g · h · Q · η</div>
+          <div class="formula-calc" id="formula-calc">1000 · 9,81 · 80 · 15 · 0,85</div>
+          <div class="formula-result">
+            <span id="power-mw">10,0</span> <span style="font-size:1.3rem">MW</span>
+            <small>potenza elettrica generata</small>
+          </div>
+        </div>
+
+        <div class="impact-grid">
+          <div class="impact"><span class="impact-icon">🏠</span><div class="impact-num" id="imp-houses">10.005</div><div class="impact-lbl">case alimentate</div></div>
+          <div class="impact"><span class="impact-icon">🌍</span><div class="impact-num" id="imp-co2">35.000</div><div class="impact-lbl">t CO₂ evitate / anno</div></div>
+        </div>
+      </section>
+
+      <section class="panel hard-only">
+        <h2><span class="badge">COMPONENTI</span> Clicca i numeri</h2>
+        <div class="component-info empty" id="component-info">
+          Clicca su un numero rosso nello schema per leggere come funziona quel pezzo.
+        </div>
+      </section>
+
+      <!-- ═══ QUIZ ═══ -->
+      <section class="panel quiz-card">
+        <h2><span class="badge" id="quiz-badge">QUIZ FACILE</span> <span id="quiz-title">Hai Capito?</span></h2>
+        <div id="quiz-body"></div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <footer class="note">
+    Modello didattico semplificato • <strong>Salto idraulico</strong>: dislivello tra lago e turbina • <strong>Portata</strong>: m³ d'acqua al secondo • <strong>Rendimento</strong>: parte di energia che diventa davvero elettricità
+  </footer>
+
+  <div class="signature"><span>Prof. Flavio</span></div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════════ */
+const state = {
+  mode:'easy',
+  // easy
+  water:50,         // 0..100
+  gateOpen:false,
+  // hard
+  h:80, q:15, eta:0.85,
+};
+
+/* ════════════════════════════════════════════════════════════════
+   ELEMENTS
+   ════════════════════════════════════════════════════════════════ */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+const body = document.body;
+const btnEasy = $('#btn-easy');
+const btnHard = $('#btn-hard');
+
+const easyWater = $('#easy-water');
+const gateBtn   = $('#gate-toggle');
+
+const ezSpeed   = $('#ez-speed');
+const ezHouses  = $('#ez-houses');
+
+const hdH   = $('#hd-h');
+const hdQ   = $('#hd-q');
+const hdEta = $('#hd-eta');
+const vH    = $('#v-h');
+const vQ    = $('#v-q');
+const vEta  = $('#v-eta');
+const formulaCalc = $('#formula-calc');
+const powerMw = $('#power-mw');
+const impHouses = $('#imp-houses');
+const impCo2    = $('#imp-co2');
+
+const turbineRotor = $('#turbine-rotor');
+const gateDoor   = $('#gate-door');
+const flowPenstock = $('#flow-penstock');
+const flowGate   = $('#flow-gate');
+const flowOut    = $('#flow-out');
+const bulbGlass  = $('#bulb-glass');
+const bulbRays   = $('.bulb-rays');
+const filament   = $('#filament');
+const houseWindows = $$('.house-window');
+const waterBody  = $('#water-body');
+
+const hotspotsG  = $('#hotspots');
+const heightInd  = $('#height-indicator');
+const heightLabel= $('#height-label');
+const componentInfo = $('#component-info');
+
+/* ════════════════════════════════════════════════════════════════
+   COMPONENT DESCRIPTIONS (HARD MODE)
+   ════════════════════════════════════════════════════════════════ */
+const components = {
+  bacino:{
+    n:1, title:'Bacino di accumulo',
+    body:'È il lago artificiale (o naturale) che contiene l\'acqua a una certa altezza. L\'acqua possiede <strong>energia potenziale gravitazionale</strong>: più è alta, più energia ha. È come una "batteria" che immagazzina energia.'
+  },
+  diga:{
+    n:2, title:'Diga',
+    body:'Sbarra il corso del fiume e crea il bacino. Le paratoie regolano la quantità d\'acqua che esce. Le dighe italiane più alte raggiungono i 260 m (Vajont) o i 247 m (Diga del Vodice).'
+  },
+  condotta:{
+    n:3, title:'Condotta forzata',
+    body:'Tubo in pressione che porta l\'acqua dal bacino fino alla turbina. Cadendo nel tubo, l\'acqua trasforma la sua <strong>energia potenziale</strong> in <strong>energia cinetica</strong> (di movimento) e arriva veloce in basso.'
+  },
+  turbina:{
+    n:4, title:'Turbina',
+    body:'L\'acqua urta le pale e le fa girare: l\'<strong>energia cinetica dell\'acqua</strong> diventa <strong>energia meccanica di rotazione</strong>. Tre tipi principali: <em>Pelton</em> (alti salti), <em>Francis</em> (medi), <em>Kaplan</em> (bassi salti, molta acqua).'
+  },
+  alternatore:{
+    n:5, title:'Alternatore',
+    body:'Collegato all\'asse della turbina: ruotando, una bobina si muove dentro un campo magnetico e si genera corrente elettrica alternata. Qui l\'<strong>energia meccanica</strong> diventa <strong>energia elettrica</strong>.'
+  },
+  rete:{
+    n:6, title:'Rete elettrica',
+    body:'Il trasformatore alza la tensione (anche a 380.000 V) per trasportare l\'elettricità su lunghe distanze con poche perdite. Vicino alle case, altri trasformatori la riportano a 230 V, quella delle prese di casa.'
+  },
+};
+
+/* ════════════════════════════════════════════════════════════════
+   QUIZZES
+   ════════════════════════════════════════════════════════════════ */
+const quizEasy = [
+  {
+    q:'DA DOVE ARRIVA L\'ACQUA DELLA CENTRALE?',
+    opts:['🏔️ DAL LAGO IN ALTO','🌊 DAL MARE','🚿 DAL RUBINETTO'],
+    correct:0,
+    fb:'BRAVO! L\'ACQUA SCENDE DAL LAGO IN ALTO PERCHÉ HA TANTA ENERGIA.'
+  },
+  {
+    q:'COSA FA GIRARE LA RUOTA (TURBINA)?',
+    opts:['🔥 IL FUOCO','💧 L\'ACQUA CHE SCENDE','💨 IL VENTO'],
+    correct:1,
+    fb:'GIUSTO! L\'ACQUA CHE SCENDE FORTE FA GIRARE LA RUOTA.'
+  },
+  {
+    q:'A COSA SERVE L\'ELETTRICITÀ DELLA CENTRALE?',
+    opts:['💡 ACCENDE LE LUCI DELLE CASE','🍕 CUOCE LA PIZZA','🚗 FA ANDARE LE MACCHININE'],
+    correct:0,
+    fb:'PERFETTO! L\'ELETTRICITÀ ARRIVA NELLE CASE E FA FUNZIONARE TANTE COSE.'
+  },
+  {
+    q:'SE L\'ACQUA È POCA, LE LUCI...',
+    opts:['💡 SI ACCENDONO TUTTE','🌑 SI ACCENDONO POCO','🌟 DIVENTANO ROSSE'],
+    correct:1,
+    fb:'BRAVO! POCA ACQUA = POCA ELETTRICITÀ = POCHE LUCI.'
+  }
+];
+
+const quizHard = [
+  {
+    q:'Quale forma di energia possiede l\'acqua nel bacino in alto?',
+    opts:['Energia cinetica','Energia potenziale gravitazionale','Energia chimica','Energia termica'],
+    correct:1,
+    fb:'Esatto: l\'acqua in quota possiede energia potenziale gravitazionale, proporzionale a m·g·h. Scendendo, questa si converte in energia cinetica.'
+  },
+  {
+    q:'Nella formula P = ρ·g·h·Q·η, cosa rappresenta η?',
+    opts:['La densità dell\'acqua','La portata in m³/s','Il rendimento del sistema turbina+alternatore','La velocità dell\'acqua'],
+    correct:2,
+    fb:'Corretto. η è il rendimento: indica la frazione di energia che viene effettivamente convertita in elettricità (tipicamente 0,80–0,90).'
+  },
+  {
+    q:'Se raddoppi il salto idraulico h, la potenza P...',
+    opts:['Resta uguale','Raddoppia','Diventa 4 volte più grande','Si dimezza'],
+    correct:1,
+    fb:'Giusto: P è direttamente proporzionale a h, quindi raddoppiando h raddoppia anche P (a parità di Q ed η).'
+  },
+  {
+    q:'Quale componente trasforma l\'energia meccanica in energia elettrica?',
+    opts:['La turbina','La condotta forzata','La diga','L\'alternatore'],
+    correct:3,
+    fb:'Esatto. La turbina fa la conversione cinetica→meccanica; l\'alternatore converte il movimento di rotazione in corrente elettrica.'
+  },
+  {
+    q:'Quale di queste NON è una vera caratteristica positiva dell\'idroelettrico?',
+    opts:['Non emette CO₂ durante la produzione','È una fonte rinnovabile','Non ha alcun impatto sull\'ambiente','Permette di accumulare energia (con il pompaggio)'],
+    correct:2,
+    fb:'Corretto: l\'idroelettrico è rinnovabile e a zero emissioni in produzione, ma le grandi dighe alterano fiumi, fauna ittica e paesaggi. Nessuna fonte è del tutto "neutra".'
+  }
+];
+
+/* ════════════════════════════════════════════════════════════════
+   MODE SWITCH
+   ════════════════════════════════════════════════════════════════ */
+function setMode(mode){
+  state.mode = mode;
+  body.classList.toggle('mode-easy', mode==='easy');
+  body.classList.toggle('mode-hard', mode==='hard');
+  btnEasy.classList.toggle('active', mode==='easy');
+  btnHard.classList.toggle('active', mode==='hard');
+  btnEasy.setAttribute('aria-selected', mode==='easy');
+  btnHard.setAttribute('aria-selected', mode==='hard');
+  hotspotsG.style.display = mode==='hard' ? 'block' : 'none';
+  heightInd.style.display = mode==='hard' ? 'block' : 'none';
+  // reset component info
+  resetComponentInfo();
+  // setup quiz
+  buildQuiz();
+  // re-render
+  render();
+}
+
+btnEasy.addEventListener('click',()=>setMode('easy'));
+btnHard.addEventListener('click',()=>setMode('hard'));
+
+/* ════════════════════════════════════════════════════════════════
+   EASY CONTROLS
+   ════════════════════════════════════════════════════════════════ */
+easyWater.addEventListener('input', e => {
+  state.water = +e.target.value;
+  render();
+});
+
+gateBtn.addEventListener('click', () => {
+  state.gateOpen = !state.gateOpen;
+  render();
+});
+
+/* ════════════════════════════════════════════════════════════════
+   HARD CONTROLS
+   ════════════════════════════════════════════════════════════════ */
+hdH.addEventListener('input', e => { state.h = +e.target.value; render(); });
+hdQ.addEventListener('input', e => { state.q = +e.target.value; render(); });
+hdEta.addEventListener('input', e => { state.eta = +e.target.value; render(); });
+
+/* hotspots */
+$$('.hotspot').forEach(h => {
+  h.addEventListener('click', () => {
+    const cmp = h.getAttribute('data-cmp');
+    showComponent(cmp);
+  });
+});
+
+function showComponent(key){
+  const c = components[key];
+  if(!c) return;
+  componentInfo.classList.remove('empty');
+  componentInfo.innerHTML = `<h3><span class="num">${c.n}</span>${c.title}</h3><p>${c.body}</p>`;
+}
+function resetComponentInfo(){
+  componentInfo.classList.add('empty');
+  componentInfo.textContent = state.mode==='hard'
+    ? 'Clicca su un numero rosso nello schema per leggere come funziona quel pezzo.'
+    : '';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ANIMATION HELPERS
+   ════════════════════════════════════════════════════════════════ */
+let rotorSpinDur = 0; // seconds per turn; 0 = stopped
+function setTurbineSpeed(rpm){
+  // rpm = giri al minuto rappresentativi (qui mappato a velocità rotazione css)
+  if(rpm <= 0){
+    turbineRotor.style.animation = 'none';
+    return;
+  }
+  const dur = Math.max(0.15, 6 / rpm); // più rpm = animazione più veloce
+  turbineRotor.style.animation = `spin ${dur}s linear infinite`;
+}
+
+function setFlowSpeed(el, level){
+  el.classList.remove('off','slow','medium','fast');
+  el.classList.add(level);
+}
+
+function lightHouses(n){
+  // total 4 houses, each 2-4 windows; we light proportionally
+  const total = houseWindows.length;
+  const litCount = Math.round((n/4) * total);
+  houseWindows.forEach((w,i) => {
+    w.classList.toggle('lit', i < litCount);
+  });
+}
+
+function setBulb(intensity){
+  // intensity 0..1
+  const fill = intensity > 0
+    ? `rgba(255, ${Math.round(190 + intensity*40)}, ${Math.round(40 + intensity*60)}, 1)`
+    : '#A8B5BD';
+  bulbGlass.setAttribute('fill', fill);
+  bulbRays.style.opacity = intensity;
+  filament.setAttribute('stroke', intensity>0.2 ? '#FFD23F' : '#FF8C42');
+  filament.setAttribute('stroke-width', 1.5 + intensity*1.5);
+}
+
+function setWaterLevel(pct){
+  // pct 0..100 — adjust water-body top
+  // Range esteso: dal bacino quasi vuoto al pieno fino al coronamento della diga
+  const minY = 305;  // bacino quasi vuoto (espone il fondo)
+  const maxY = 260;  // bacino pieno
+  pct = Math.max(0, Math.min(100, pct));
+  const y = minY - (pct/100) * (minY - maxY);
+
+  // corpo d'acqua
+  waterBody.setAttribute('d', `M 0,${y} L 420,${y} L 420,310 L 0,310 Z`);
+
+  // ellisse di superficie segue il livello
+  const surfaceEllipse = $('#water-surface-ellipse');
+  if(surfaceEllipse) surfaceEllipse.setAttribute('cy', y);
+
+  // increspature traslate con la superficie + svaniscono a livelli bassi
+  const ripples = $('#water-ripples');
+  if(ripples){
+    const dy = y - 265; // offset dalla posizione originale
+    ripples.setAttribute('transform', `translate(0, ${dy})`);
+    // fade-out quando il bacino è quasi vuoto
+    const opacity = Math.max(0, Math.min(1, (295 - y) / 25)) * 0.4;
+    ripples.style.opacity = opacity;
+  }
+
+  return y;
+}
+
+function updateHeightIndicator(waterY){
+  // la linea rossa tratteggiata segue il livello dell'acqua
+  const line     = $('#height-line');
+  const tickTop  = $('#height-tick-top');
+  const text     = $('#height-text');
+  if(!line) return;
+  line.setAttribute('y1', waterY);
+  tickTop.setAttribute('y1', waterY);
+  tickTop.setAttribute('y2', waterY);
+  // testo posizionato a metà tra superficie e turbina
+  const mid = (waterY + 420) / 2 + 4; // +4 per centratura ottica
+  text.setAttribute('y', mid);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RENDER
+   ════════════════════════════════════════════════════════════════ */
+function render(){
+  if(state.mode === 'easy'){
+    renderEasy();
+  } else {
+    renderHard();
+  }
+}
+
+function renderEasy(){
+  // gate button label
+  gateBtn.textContent = state.gateOpen ? 'CHIUDI LA DIGA' : 'APRI LA DIGA';
+  gateBtn.classList.toggle('closed', state.gateOpen);
+
+  // gate visual
+  if(state.gateOpen){
+    gateDoor.style.transition = 'transform 0.4s ease';
+    gateDoor.style.transform = 'translateY(-22px)';
+  } else {
+    gateDoor.style.transition = 'transform 0.4s ease';
+    gateDoor.style.transform = 'translateY(0)';
+  }
+
+  // water level in lake reflects "quanta acqua" — range ampio per visibilità
+  setWaterLevel(20 + state.water * 0.8); // 20..100 % di riempimento
+
+  // effective flow = water * gate
+  const effective = state.gateOpen ? state.water : 0;
+
+  // animate flows
+  if(effective <= 0){
+    setFlowSpeed(flowPenstock,'off');
+    setFlowSpeed(flowGate,'off');
+    setFlowSpeed(flowOut,'off');
+  } else if(effective < 35){
+    setFlowSpeed(flowPenstock,'slow');
+    setFlowSpeed(flowGate,'slow');
+    setFlowSpeed(flowOut,'slow');
+  } else if(effective < 70){
+    setFlowSpeed(flowPenstock,'medium');
+    setFlowSpeed(flowGate,'medium');
+    setFlowSpeed(flowOut,'medium');
+  } else {
+    setFlowSpeed(flowPenstock,'fast');
+    setFlowSpeed(flowGate,'fast');
+    setFlowSpeed(flowOut,'fast');
+  }
+
+  // turbine speed
+  const rpm = effective / 5; // 0..20
+  setTurbineSpeed(rpm);
+
+  // houses lit (0..4)
+  const housesLit = Math.round(effective / 25);
+  lightHouses(housesLit);
+
+  // bulb
+  setBulb(Math.min(1, effective/100));
+
+  // readouts
+  ezSpeed.textContent = Math.round(rpm);
+  ezHouses.textContent = housesLit;
+}
+
+function renderHard(){
+  // labels
+  vH.textContent   = state.h + ' m';
+  vQ.textContent   = state.q + ' m³/s';
+  vEta.textContent = state.eta.toFixed(2);
+  heightLabel.textContent = state.h;
+
+  // formula
+  const RHO = 1000, G = 9.81;
+  const P_W = RHO * G * state.h * state.q * state.eta; // W
+  const P_kW = P_W / 1000;
+  const P_MW = P_kW / 1000;
+
+  formulaCalc.innerHTML = `${RHO} · ${G.toString().replace('.',',')} · ${state.h} · ${state.q} · ${state.eta.toString().replace('.',',')}`;
+  powerMw.textContent = P_MW.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+  // case alimentate (1 famiglia ~ 2700 kWh/anno → potenza media ~0.31 kW
+  // più realistico: un tipico kW di centrale alimenta ~3 famiglie su base annua continuativa)
+  // useremo: case ≈ P_kW * 3.2
+  const houses = Math.round(P_kW * 3.2);
+  impHouses.textContent = houses.toLocaleString('it-IT');
+
+  // CO2 evitata: ipotizzando produzione annua = P * 8760 * 0.45 (fattore di carico) kWh
+  // emissioni evitate vs gas: ~0.4 kg CO2 / kWh
+  const kWh_anno = P_kW * 8760 * 0.45;
+  const co2_t = Math.round(kWh_anno * 0.4 / 1000);
+  impCo2.textContent = co2_t.toLocaleString('it-IT');
+
+  // animations: scale flows by P
+  const intensity = Math.min(1, P_MW / 30); // 0..1
+  if(intensity < 0.05){
+    setFlowSpeed(flowPenstock,'off');
+    setFlowSpeed(flowGate,'off');
+    setFlowSpeed(flowOut,'off');
+  } else if(intensity < 0.33){
+    setFlowSpeed(flowPenstock,'slow');
+    setFlowSpeed(flowGate,'slow');
+    setFlowSpeed(flowOut,'slow');
+  } else if(intensity < 0.66){
+    setFlowSpeed(flowPenstock,'medium');
+    setFlowSpeed(flowGate,'medium');
+    setFlowSpeed(flowOut,'medium');
+  } else {
+    setFlowSpeed(flowPenstock,'fast');
+    setFlowSpeed(flowGate,'fast');
+    setFlowSpeed(flowOut,'fast');
+  }
+  // dam always open in hard mode
+  gateDoor.style.transform = 'translateY(-22px)';
+
+  setTurbineSpeed(intensity * 25);
+  // h pilota il livello del bacino — range più ampio per visibilità
+  const waterY = setWaterLevel(30 + state.h * 0.35); // ~33..100%
+  updateHeightIndicator(waterY);
+  setBulb(intensity);
+
+  // light houses based on intensity (more granular 0..total)
+  const total = houseWindows.length;
+  const lit = Math.round(intensity * total);
+  houseWindows.forEach((w,i) => w.classList.toggle('lit', i < lit));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   QUIZ ENGINE
+   ════════════════════════════════════════════════════════════════ */
+let quizData = [];
+let quizIdx = 0;
+let quizScore = 0;
+let quizAnswered = false;
+
+function buildQuiz(){
+  quizData = state.mode === 'easy' ? quizEasy : quizHard;
+  quizIdx = 0;
+  quizScore = 0;
+  quizAnswered = false;
+  $('#quiz-badge').textContent = state.mode === 'easy' ? 'QUIZ FACILE' : 'QUIZ DIFFICILE';
+  $('#quiz-title').textContent = state.mode === 'easy' ? 'Hai Capito?' : 'Verifica';
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const body = $('#quiz-body');
+  if(quizIdx >= quizData.length){
+    // final
+    const pct = Math.round(quizScore / quizData.length * 100);
+    let msg, emoji;
+    if(state.mode === 'easy'){
+      msg = quizScore === quizData.length ? 'TUTTE GIUSTE! BRAVISSIMO!' :
+            quizScore >= quizData.length-1 ? 'QUASI TUTTE GIUSTE! BRAVO!' :
+            quizScore >= 2 ? 'BENE! HAI CAPITO LE COSE PRINCIPALI.' : 'PROVA ANCORA, CE LA FAI!';
+      emoji = quizScore === quizData.length ? '🌟' : quizScore >= 2 ? '👍' : '💪';
+    } else {
+      msg = quizScore === quizData.length ? 'Perfetto: padronanza completa.' :
+            quizScore >= 4 ? 'Ottimo lavoro.' :
+            quizScore >= 3 ? 'Discreto, rivedi i concetti che hai sbagliato.' :
+            'Ti consiglio di rileggere le schede dei componenti.';
+      emoji = quizScore === quizData.length ? '🎯' : quizScore >= 3 ? '👍' : '📖';
+    }
+    body.innerHTML = `
+      <div class="quiz-final">
+        <div style="font-size:3rem">${emoji}</div>
+        <div class="quiz-final-score">${quizScore} / ${quizData.length}</div>
+        <small>${msg}</small>
+        <button class="quiz-restart" onclick="buildQuiz()">${state.mode==='easy'?'RIPROVA':'Ricomincia'}</button>
+      </div>`;
+    return;
+  }
+  const item = quizData[quizIdx];
+  quizAnswered = false;
+  const letters = ['A','B','C','D'];
+  body.innerHTML = `
+    <div class="quiz-q">${item.q}</div>
+    <div class="quiz-opts" id="quiz-opts">
+      ${item.opts.map((o,i)=>`<button class="quiz-opt" data-i="${i}"><span class="marker">${letters[i]}</span><span>${o}</span></button>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="quiz-fb"></div>
+    <div class="quiz-nav">
+      <span class="quiz-progress">${quizIdx+1} / ${quizData.length}</span>
+      <button class="quiz-next" id="quiz-next" disabled>${quizIdx === quizData.length-1 ? (state.mode==='easy'?'FINE':'Risultato') : (state.mode==='easy'?'AVANTI →':'Avanti →')}</button>
+    </div>`;
+  $$('#quiz-opts .quiz-opt').forEach(btn => {
+    btn.addEventListener('click', () => answer(+btn.getAttribute('data-i')));
+  });
+  $('#quiz-next').addEventListener('click', () => {
+    if(quizAnswered){ quizIdx++; renderQuestion(); }
+  });
+}
+
+function answer(i){
+  if(quizAnswered) return;
+  quizAnswered = true;
+  const item = quizData[quizIdx];
+  const buttons = $$('#quiz-opts .quiz-opt');
+  buttons.forEach((b,bi) => {
+    b.disabled = true;
+    if(bi === item.correct) b.classList.add('correct');
+    else if(bi === i) b.classList.add('wrong');
+  });
+  const fb = $('#quiz-fb');
+  if(i === item.correct){
+    quizScore++;
+    fb.className = 'quiz-feedback ok show';
+    fb.innerHTML = (state.mode==='easy'?'✅ ':'✓ ') + item.fb;
+  } else {
+    fb.className = 'quiz-feedback ko show';
+    fb.innerHTML = (state.mode==='easy'?'❌ ':'✗ ') + item.fb;
+  }
+  $('#quiz-next').disabled = false;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════════ */
+setMode('easy');
+</script>
+</body>
+</html>
